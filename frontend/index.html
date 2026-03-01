@@ -57,8 +57,7 @@
             </svg>
         );
 
-        // API via Traefik port 80 (corrigé — port 3001 est réservé à Uptime Kuma)
-        const API_URL = 'http://76.13.44.181/api';
+        const API_URL = 'https://smeg.archiatech.com/api';
 
         const CommandMenu = ({ isOpen, onClose, collabs, setView, setSelectedId, updateCollab, onDelete, onEdit }) => {
             const [search, setSearch] = useState('');

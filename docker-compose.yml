@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   smeg-frontend:
@@ -9,11 +7,18 @@ services:
       - ./frontend:/usr/share/nginx/html:ro
     labels:
       - "traefik.enable=true"
-      # Catch-all Traefik v3 : matche toute requête sans Host spécifique
-      - "traefik.http.routers.smeg-frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.smeg-frontend.priority=1"
-      - "traefik.http.routers.smeg-frontend.entrypoints=web"
+      - "traefik.docker.network=traefik-public"
+      # HTTPS
+      - "traefik.http.routers.smeg-frontend.rule=Host(`smeg.archiatech.com`)"
+      - "traefik.http.routers.smeg-frontend.entrypoints=websecure"
+      - "traefik.http.routers.smeg-frontend.tls=true"
+      - "traefik.http.routers.smeg-frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.smeg-frontend.loadbalancer.server.port=80"
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.smeg-frontend-http.rule=Host(`smeg.archiatech.com`)"
+      - "traefik.http.routers.smeg-frontend-http.entrypoints=web"
+      - "traefik.http.routers.smeg-frontend-http.middlewares=redirect-https@file"
+      - "traefik.http.routers.smeg-frontend-http.service=smeg-frontend"
     networks:
       - traefik-public
     restart: unless-stopped
@@ -30,12 +35,18 @@ services:
       - NODE_ENV=production
     labels:
       - "traefik.enable=true"
-      # Les routes /api/* sont prioritaires sur le frontend catch-all
-      - "traefik.http.routers.smeg-api.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.smeg-api.priority=10"
-      - "traefik.http.routers.smeg-api.entrypoints=web"
-      - "traefik.http.services.smeg-api.loadbalancer.server.port=3000"
       - "traefik.docker.network=traefik-public"
+      # HTTPS
+      - "traefik.http.routers.smeg-api.rule=Host(`smeg.archiatech.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.smeg-api.entrypoints=websecure"
+      - "traefik.http.routers.smeg-api.tls=true"
+      - "traefik.http.routers.smeg-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.smeg-api.loadbalancer.server.port=3000"
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.smeg-api-http.rule=Host(`smeg.archiatech.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.smeg-api-http.entrypoints=web"
+      - "traefik.http.routers.smeg-api-http.middlewares=redirect-https@file"
+      - "traefik.http.routers.smeg-api-http.service=smeg-api"
     networks:
       - traefik-public
       - smeg-internal
