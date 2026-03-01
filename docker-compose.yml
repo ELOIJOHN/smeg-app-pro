@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+
+  smeg-frontend:
+    image: nginx:alpine
+    container_name: smeg-frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      # Catch-all Traefik v3 : matche toute requête sans Host spécifique
+      - "traefik.http.routers.smeg-frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.smeg-frontend.priority=1"
+      - "traefik.http.routers.smeg-frontend.entrypoints=web"
+      - "traefik.http.services.smeg-frontend.loadbalancer.server.port=80"
+    networks:
+      - traefik-public
+    restart: unless-stopped
+
+  smeg-backend:
+    image: node:18-alpine
+    container_name: smeg-backend
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: sh -c "npm install --silent && node server.js"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      # Les routes /api/* sont prioritaires sur le frontend catch-all
+      - "traefik.http.routers.smeg-api.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.smeg-api.priority=10"
+      - "traefik.http.routers.smeg-api.entrypoints=web"
+      - "traefik.http.services.smeg-api.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik-public"
+    networks:
+      - traefik-public
+      - smeg-internal
+    restart: unless-stopped
+
+networks:
+  traefik-public:
+    external: true
+  smeg-internal:
+    driver: bridge
